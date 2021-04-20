@@ -1,0 +1,5 @@
+# Project exclude paths
+/backups/
+/build/
+/cmake-build-debug/
+/figures/
