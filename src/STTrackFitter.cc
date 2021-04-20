@@ -169,7 +169,7 @@ void STTrackFitter::noiseBetheBloch(TMatrixT<double>& noiseMat, double p, double
     }
   }
 
-  sigma2E *= 1.e-15; // [eV] -> [MeV]
+  sigma2E *= 1.e-12; // [eV] -> [MeV]
 
   // update noise matrix, using linear error propagation from E to q/p
   noiseMat(4, 4) += fCharge * fCharge / beta2 / std::pow(p, 4.) * sigma2E;
@@ -296,8 +296,8 @@ void STTrackFitter::extrapolateTrackToZ(STTrack& s1Track, double nextZ)
     // todo : account for Bremsstrahlung (?)
     if (fCalcLoss && fInMaterial) {
       // correction for qp
-      double tx = nextStateKF[2];
-      double ty = nextStateKF[3];
+      double tx = trackStateKF[2];
+      double ty = trackStateKF[3];
       double t = std::sqrt(1. + tx * tx + ty * ty);
       double dl = fDz * t; // signed dLength
       double qp = trackStateKF[4];
@@ -310,16 +310,15 @@ void STTrackFitter::extrapolateTrackToZ(STTrack& s1Track, double nextZ)
 
       // correction for cov matrix
       // from cbm code
-      double p = std::abs(fCharge / qp);
+      double p0 = std::abs(fCharge / qp);
+      double p = std::abs(fCharge / nextStateKF[4]);
       double effDL = dl / 10. / fMatRadL;
       double s0 = (effDL > std::exp(-1. / 0.038) ) ? qp * 0.0136 * (1. + 0.038 * std::log(effDL)) : 0.;
       double a  = (1. + fMass * fMass * qp * qp) * s0 * s0 * t * t * effDL;
       double Q5 = a * (1. + tx * tx);
       double Q8 = a * tx * ty;
       double Q9 = a * (1. + ty * ty);
-      // double eloss = std::sqrt(p * p + fMass * fMass);
-      double corr = (1. - std::abs(qp) * effDL * fDEdx);
-      double Ecor = corr > 1e-3 * std::abs(qp) ? 1. / corr : 1e3 * p;
+      double Ecor = p / p0;
       covMatrix(2, 2) += Q5;
       covMatrix(3, 2) += Q8;
       covMatrix(3, 3) += Q9;
