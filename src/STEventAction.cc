@@ -435,6 +435,9 @@ void STEventAction::fitTracksKF()
   trackFitter->setMass(mass); // [mev]; // todo : set proper hypothesis
   trackFitter->setCharge(1.);
 
+  trackFitter->setZStepLength(0.05);
+  trackFitter->setRefit(false);
+
   // todo : get material parameters from geant4 geometry
   // parameters for Si from pdg
   // https://pdg.lbl.gov/2020/AtomicNuclearProperties/HTML/silicon_Si.html
@@ -503,12 +506,10 @@ void STEventAction::fitTracksKF()
              coordsZ[i], measVec[i][0], measVec[i][1]);
     }
 
-    track.setStateFromKF(0, std::vector<double>{0, 0, 0, 0, 1e-6});
+    track.setStateFromKF(coordsZ.front(), std::vector<double>{measVec.front()[0], measVec.front()[1], 0, 0, 1e-6});
     track.setCovMatrix(initCovMatrix);
     STTrack fittedTrack; // todo: propagate fitted tracks to vTrack vector
     std::vector<std::vector<double>> fitStates;
-    trackFitter->setZStepLength(0.05);
-    trackFitter->setRefit(false);
     trackFitter->fitTrack(track, coordsZ, measVec, measCovMatrix, fitStates, fittedTrack);
 
     // draw trajectory if needed
@@ -629,6 +630,7 @@ void STEventAction::fitTracksKF()
 
     trackMcPoints.clear();
     fitStates.clear();
+    measVec.clear();
   }
 
   iEvent++;
