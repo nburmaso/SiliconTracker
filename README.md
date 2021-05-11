@@ -22,6 +22,7 @@ Current status:
 |   +-- tx
 |   +-- ty
 |   +-- qp
+|   +-- covariance matrix (array of 15 elements)
 ```
 
 * Initial parameters of MC tracks are stored into the `mc_tracks.root` file:
