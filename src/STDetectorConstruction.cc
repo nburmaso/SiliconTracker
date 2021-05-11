@@ -41,25 +41,26 @@ G4VPhysicalVolume* STDetectorConstruction::Construct()
   auto* solidSi = new G4Box("SiLayer", 50 * cm, 50 * cm, fLayersThic * mm); // half-dimensions
   auto* logicSi = new G4LogicalVolume(solidSi, si_mat, "SiLayer");
 
+  // lead foil for conversions
   /*
   auto *absorber = new G4Box("absorber", 40 * cm, 40 * cm, 1.5 * mm); // half-dimensions in mm
   auto *absorberLogic = new G4LogicalVolume(absorber, pb_mat, "absorber");
   G4VPhysicalVolume *absorberPhys = new G4PVPlacement(0, G4ThreeVector(0, 0, 5 * cm),
                                                       absorberLogic, "absorber", logicWorld, false, 0, 0);
-*/
+  */
 
   fNSiLayers = 10;
   fDistCM = 10; // [cm]
   for (uint i = 0; i < fNSiLayers; i++) {
     new G4PVPlacement(0, G4ThreeVector(0., 0., fDistCM * (i + 1) * cm), logicSi,
-                      "SiLayer", logicWorld, false, 0, 0);
+                      "SiLayer" + std::to_string(i), logicWorld, false, 0, 0);
   }
 
   // setting uniform magnetic field to the world
-  auto* fMagField = new G4UniformMagField(G4ThreeVector(0., 1. * tesla, 0.));
+  auto* magField = new G4UniformMagField(G4ThreeVector(fMagField[0], fMagField[1] * tesla, fMagField[2]));
   auto* fieldMgr = new G4FieldManager();
-  fieldMgr->SetDetectorField(fMagField);
-  fieldMgr->CreateChordFinder(fMagField);
+  fieldMgr->SetDetectorField(magField);
+  fieldMgr->CreateChordFinder(magField);
   logicWorld->SetFieldManager(fieldMgr, true);
 
   fScoringVolume = logicSi;

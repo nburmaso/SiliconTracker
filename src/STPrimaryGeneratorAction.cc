@@ -24,18 +24,19 @@ void STPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
   gRandom = new TRandomMT64();
   gRandom->SetSeed(std::time(nullptr));
   fParticleGun->SetParticleDefinition(G4ParticleTable::GetParticleTable()->FindParticle("mu+"));
-  fParticleGun->SetParticlePosition(G4ThreeVector(0., 1., 0.));
+  fParticleGun->SetParticlePosition(G4ThreeVector(0., 0., 0.));
   double pMag = 1000; // + gRandom->Gaus(0, 100);
-  double theta = gRandom->Uniform(-0.25, 0.25);
-  double phi = gRandom->Uniform(-0.25, 0.25);
-  // double theta = 0.;
-  // double phi = 0.;
+                      //  double theta = gRandom->Uniform(-0.25, 0.25);
+                      //  double phi = gRandom->Uniform(-0.25, 0.25);
+  double theta = 0.;
+  double phi = 0.;
   TVector3 p3;
   p3.SetMagThetaPhi(pMag, theta, phi);
   G4ThreeVector p(p3.x(), p3.y(), p3.z());
 
   fParticleGun->SetParticleMomentum(p);
   fParticleGun->GeneratePrimaryVertex(anEvent);
+
   printf("Particle momentum = %.3f\n", p.mag());
 
   delete gRandom;

@@ -23,9 +23,12 @@ class STTrack
   // common parameters: z, x, y, px, py, pz
   void getState(std::vector<double>& state);
 
-  void setCovMatrix(const TMatrixT<double> covMatrix);
+  void setCovMatrix(const TMatrixT<double>& covMatrix);
 
   void getCovMatrix(TMatrixT<double>& covMatrix);
+
+  // array size must be consistent
+  void getCovMatrix(double* covMatrixLT) { std::copy(fCov, fCov + 15, covMatrixLT); }
 
   double getZ() { return fZ; };
 

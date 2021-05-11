@@ -42,7 +42,7 @@ void STTrack::getState(std::vector<double>& state)
   state[5] = fV[4]; // pz
 }
 
-void STTrack::setCovMatrix(const TMatrixT<double> covMatrix)
+void STTrack::setCovMatrix(const TMatrixT<double>& covMatrix)
 {
   // sigma^2 x
   fCov[0] = covMatrix(0, 0);

@@ -17,6 +17,7 @@ int main(int argc, char** argv)
   CLHEP::HepRandom::setTheSeed(seed);
 
   auto* runManager = new G4RunManager;
+  //  runManager->SetNumberOfThreads(6);
   runManager->SetUserInitialization(new QBBC()); // physics list
   runManager->SetUserInitialization(new STActionInitialization());
   runManager->SetUserInitialization(new STDetectorConstruction());

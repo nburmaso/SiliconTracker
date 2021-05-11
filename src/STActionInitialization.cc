@@ -16,18 +16,18 @@ STActionInitialization::~STActionInitialization()
 
 void STActionInitialization::BuildForMaster() const
 {
-  STRunAction* runAction = new STRunAction;
+  auto* runAction = new STRunAction();
   SetUserAction(runAction);
 }
 
 void STActionInitialization::Build() const
 {
-  SetUserAction(new STPrimaryGeneratorAction);
+  SetUserAction(new STPrimaryGeneratorAction());
 
-  STRunAction* runAction = new STRunAction;
+  auto* runAction = new STRunAction();
   SetUserAction(runAction);
 
-  STEventAction* eventAction = new STEventAction(runAction);
+  auto* eventAction = new STEventAction(runAction);
   SetUserAction(eventAction);
 
   SetUserAction(new STSteppingAction(eventAction));

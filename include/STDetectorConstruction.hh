@@ -19,6 +19,7 @@ class STDetectorConstruction : public G4VUserDetectorConstruction
   void setLayersDistance(double distCM) { fDistCM = distCM; }
   double getLayersDistance() const { return fDistCM; }
   double getLayersThic() const { return fLayersThic; }
+  void getMagField(double* magField) const { std::copy(fMagField, fMagField + 3, magField); }
 
  protected:
   G4LogicalVolume* fScoringVolume;
@@ -27,6 +28,7 @@ class STDetectorConstruction : public G4VUserDetectorConstruction
   uint fNSiLayers{5};
   double fDistCM{20.};
   double fLayersThic{10.};
+  double fMagField[3]{0., 1., 0};
 };
 
 #endif

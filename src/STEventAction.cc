@@ -25,6 +25,7 @@ STEventAction::STEventAction(STRunAction* runAction)
     vDigiMatches(),
     vHits(),
     vTracks(),
+    vTrackIDs(),
     fHistoP(nullptr),
     fHistDigis4(nullptr),
     // TODO read these parameters from geometry
@@ -41,16 +42,17 @@ STEventAction::~STEventAction()
   delete fHistoP;
 }
 
-void STEventAction::BeginOfEventAction(const G4Event* /* event */)
+void STEventAction::BeginOfEventAction(const G4Event* /* iEvent */)
 {
   vMcPoints.clear();
   vDigis.clear();
   vDigiMatches.clear();
   vHits.clear();
   vTracks.clear();
+  vTrackIDs.clear();
 }
 
-void STEventAction::EndOfEventAction(const G4Event* /* event */)
+void STEventAction::EndOfEventAction(const G4Event* /* iEvent */)
 {
   Digitizer();
   HitProducer();
@@ -404,6 +406,7 @@ void STEventAction::TrackFitter()
 
 int iCanvasFit = 0;
 int iCanvasRefit = 0;
+int iEvent = 0;
 void STEventAction::fitTracksKF()
 {
   gRandom = new TRandomMT64();
@@ -423,13 +426,13 @@ void STEventAction::fitTracksKF()
   }
 
   auto* trackFitter = new STTrackFitter();
-  trackFitter->setMagFieldHomogeneous(0, 1., 0);
+  trackFitter->setMagFieldHomogeneous(fMagField[0], fMagField[1], fMagField[2]);
   trackFitter->setCalcLoss(true);
   trackFitter->setDebugLevel(0);
 
   // double mass = 0.5109989461; // electron mass, [mev]
   double mass = 105.6583745;  // muon mass, [mev]
-  trackFitter->setMass(mass); // [mev]; todo : set proper hypothesis
+  trackFitter->setMass(mass); // [mev]; // todo : set proper hypothesis
   trackFitter->setCharge(1.);
 
   // todo : get material parameters from geant4 geometry
@@ -451,13 +454,15 @@ void STEventAction::fitTracksKF()
   trackFitter->setDetectorGeom(layers);
   trackFitter->setLayerTH(fLayersThic);
 
-  for (auto track : vTracks) {
+  std::vector<STMcPoint> trackMcPoints;
+  int nTracks = vTracks.size();
+  for (int iTrack = 0; iTrack < nTracks; iTrack++) {
+    auto& track = vTracks[iTrack];
     // construct measurements out of mc points
     std::vector<std::vector<double>> measVec;
     std::vector<double> coordsZ;
 
     // collect relevant mc points
-    std::vector<STMcPoint> trackMcPoints;
     for (auto& mcPoint : vMcPoints) {
       if (mcPoint.GetTrackID() == track.getMCTrackID()) {
         trackMcPoints.push_back(mcPoint);
@@ -525,7 +530,7 @@ void STEventAction::fitTracksKF()
     if (fPulls) {
       TMatrixT<double> cov(5, 5);
       fittedTrack.getCovMatrix(cov);
-      auto& mcPoint = vMcPoints.back();
+      auto& mcPoint = trackMcPoints.back();
       double mcX = mcPoint.GetPosOut().getX();
       double mcY = mcPoint.GetPosOut().getY();
       double mcTx = (mcPoint.GetPosOut().getX() - mcPoint.GetPosIn().getX()) / (mcPoint.GetPosOut().getZ() - mcPoint.GetPosIn().getZ());
@@ -552,6 +557,19 @@ void STEventAction::fitTracksKF()
 
     double sumMomLoss = trackFitter->getSumMomLoss();
     printf("\nLOG(INFO): sum momentum loss = %.3f MeV\n\n", sumMomLoss);
+
+    // ---------------------------------------------------------------
+    // write tracks into tree
+    fRunAction->recoTrack.eventID = iEvent;
+    fRunAction->recoTrack.trackID = iTrack;
+    fRunAction->recoTrack.z = coordsZ.back();
+    fRunAction->recoTrack.x = fitStates.back()[0];
+    fRunAction->recoTrack.y = fitStates.back()[1];
+    fRunAction->recoTrack.tx = fitStates.back()[2];
+    fRunAction->recoTrack.ty = fitStates.back()[3];
+    fRunAction->recoTrack.qp = fitStates.back()[4];
+    fittedTrack.getCovMatrix(fRunAction->recoTrack.covM);
+    fRunAction->tTracks->Fill();
 
     // ---------------------------------------------------------------
     // refitting track
@@ -608,7 +626,12 @@ void STEventAction::fitTracksKF()
       fRunAction->hTyPulls->Fill((recoTy - mcTy)  / std::sqrt(cov(3, 3)));
     }
     */
+
+    trackMcPoints.clear();
+    fitStates.clear();
   }
+
+  iEvent++;
 
   delete gRandom;
   delete trackFitter;

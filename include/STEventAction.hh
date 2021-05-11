@@ -32,11 +32,17 @@ class STEventAction : public G4UserEventAction
   void setNSiLayers(uint nLayers) { fNSiLayers = nLayers; }
   void setLayersDist(double distCM) { fDistCM = distCM; }
   void setLayersThic(double thick) { fLayersThic = thick; }
+  void setHomoMagField(double* magField) { std::copy(magField, magField + 3, fMagField); }
   void drawQA(STTrack& preFitTrack,
               std::vector<double>& coordsZ,
               std::vector<std::vector<double>>& recoStates,
               TGraph* trajectory,
               const std::string& filename);
+
+  STRunAction* getRunAction() { return fRunAction; }
+
+  bool isTrackStored(int trackID) { return (std::count(vTrackIDs.begin(), vTrackIDs.end(), trackID) != 0); }
+  void addTrackID(int trackID) { vTrackIDs.push_back(trackID); }
 
  private:
   void Digitizer();
@@ -54,6 +60,7 @@ class STEventAction : public G4UserEventAction
   std::vector<STDigiMatch> vDigiMatches;
   std::vector<STHit> vHits;
   std::vector<STTrack> vTracks;
+  std::vector<int> vTrackIDs;
 
   double fLayerSizeX;
   double fLayerSizeY;
@@ -66,6 +73,7 @@ class STEventAction : public G4UserEventAction
   uint fNSiLayers;
   double fDistCM;
   double fLayersThic;
+  double fMagField[3];
 
   bool fDebug{false};
   bool fPulls{false};
