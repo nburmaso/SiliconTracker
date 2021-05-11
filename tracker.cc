@@ -12,6 +12,9 @@ int main(int argc, char** argv)
   auto* ui = new G4UIExecutive(argc, argv);
 
   G4Random::setTheEngine(new CLHEP::RanecuEngine);
+  G4long seed = time(nullptr);
+  G4Random::setTheSeed(seed);
+  CLHEP::HepRandom::setTheSeed(seed);
 
   auto* runManager = new G4RunManager;
   runManager->SetUserInitialization(new QBBC()); // physics list

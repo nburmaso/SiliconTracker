@@ -69,8 +69,7 @@ class STEventAction : public G4UserEventAction
 
   bool fDebug{false};
   bool fPulls{false};
-
-
+  bool fDrawTraj{false};
 };
 
 #endif

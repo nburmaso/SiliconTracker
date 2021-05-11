@@ -1,23 +1,23 @@
 /run/initialize
 /vis/enable 0
-/run/beamOn 1
+/run/beamOn 100
 
-#/run/initialize
-#/vis/open OGL 600x600-0+0
-#/vis/drawVolume
-#/vis/geometry/set/visibility World 0 false
-#/vis/geometry/set/colour SiLayer 0 1 1 0 .2
-#/vis/viewer/set/style surface
-#/vis/viewer/set/viewpointThetaPhi 120 160
-#/vis/scene/add/axes
-#/vis/filtering/trajectories/create/particleFilter
-#/vis/filtering/trajectories/particleFilter-0/add gamma
-#/vis/filtering/trajectories/particleFilter-0/add mu+
-#/vis/filtering/trajectories/particleFilter-0/add e-
-#/vis/filtering/trajectories/particleFilter-0/add e+
-#/vis/filtering/trajectories/particleFilter-0/invert false
-#/vis/filtering/trajectories/particleFilter-0/verbose false
-#/vis/filtering/trajectories/particleFilter-0/active true
-#/vis/scene/add/trajectories smooth
-#/vis/scene/endOfEventAction accumulate
-#/run/beamOn 1
+# /run/initialize
+# /vis/open OGL 600x600-0+0
+# /vis/drawVolume
+# /vis/geometry/set/visibility World 0 false
+# /vis/geometry/set/colour SiLayer 0 1 1 0 .2
+# /vis/viewer/set/style surface
+# /vis/viewer/set/viewpointThetaPhi 120 160
+# /vis/scene/add/axes
+# /vis/filtering/trajectories/create/particleFilter
+# /vis/filtering/trajectories/particleFilter-0/add gamma
+# /vis/filtering/trajectories/particleFilter-0/add mu+
+# /vis/filtering/trajectories/particleFilter-0/add e-
+# /vis/filtering/trajectories/particleFilter-0/add e+
+# /vis/filtering/trajectories/particleFilter-0/invert false
+# /vis/filtering/trajectories/particleFilter-0/verbose false
+# /vis/filtering/trajectories/particleFilter-0/active true
+# /vis/scene/add/trajectories smooth
+# /vis/scene/endOfEventAction accumulate
+# /run/beamOn 1

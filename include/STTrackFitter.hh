@@ -36,10 +36,15 @@ class STTrackFitter
   double energyLoss(double energy, double p) const;
 
   // momentum loss implementation
-  double momentumLoss(double p, double step);
+  double momentumLoss(double p, double step, bool linear = false);
 
   // check if inside a material
   void checkMaterial(double z);
+
+  // correction for energy losses
+  void correctForPLoss(std::vector<double>& trackStateKF,
+                       std::vector<double>& nextStateKF,
+                       TMatrixT<double>& covMatrix);
 
   // propagate particle with RK4
   void extrapolateTrackToZ(STTrack& s1Track, double nextZ);
@@ -53,8 +58,7 @@ class STTrackFitter
                 const std::vector<std::vector<double>>& vMeas,
                 const TMatrixT<double>& covMatrixMeas,
                 std::vector<std::vector<double>>& filteredStates,
-                STTrack& outS1Track,
-                bool isRefit = false);
+                STTrack& outS1Track);
 
   // z step length in mm
   void setZStepLength(double hz) { fDz = hz; }
@@ -106,6 +110,8 @@ class STTrackFitter
   // print debug output: intermediate matrices, states etc. ...
   void setDebugLevel(uint level) { fDebugLevel = level; }
 
+  void setRefit(bool isRefit) { fRefit = isRefit; }
+
   double getSumMomLoss() { return fSumMomLoss; }
 
   void clearTrajectory();
@@ -144,6 +150,7 @@ class STTrackFitter
 
   // service flags
   short fDebugLevel{0};
+  bool fRefit{false};
   bool fCalcLoss{false};
   bool fInMaterial{false};
   bool fELossBetheBloch{false};

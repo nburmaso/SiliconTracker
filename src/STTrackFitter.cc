@@ -105,7 +105,8 @@ double STTrackFitter::eLossBetheBloch(double beta2, double gamma, double gamma2)
   double eloss = 0.307075 * fMatZ / fMatA * fMatDensity / beta2 * fCharge * fCharge;
   double massRatio = me / fMass;
   double argument = gamma2 * beta2 * me * 2. / ((1e-6 * fMatExEnrg) * std::sqrt(1. + 2. * gamma * massRatio + massRatio * massRatio));
-  eloss *= std::log(argument) - beta2; // Bethe-Bloch [MeV/cm]
+  double delta = -0.5 + std::log(std::sqrt(beta2) * gamma * 28.816 * std::sqrt(fMatDensity * fMatZ / fMatA) / fMatExEnrg);
+  eloss *= std::log(argument) - beta2 - delta; // Bethe-Bloch [MeV/cm]
 
   if (eloss < 0.) {
     eloss = 0.;
@@ -200,22 +201,26 @@ double STTrackFitter::energyLoss(double energy, double p) const
 }
 
 // from Genfit
-double STTrackFitter::momentumLoss(double p, double step)
+double STTrackFitter::momentumLoss(double p, double step, bool linear)
 {
   double E0 = std::sqrt(p * p + fMass * fMass);
   double dEdx1 = energyLoss(E0, p);
 
-  // RK4
-  double E1 = E0 - dEdx1 * step / 10. / 2.;
-  double dEdx2 = energyLoss(E1, p); // dEdx(x0 + h/2, E0 + h/2 * dEdx1)
+  if (linear) {
+    fDEdx = dEdx1;
+  } else {
+    // RK4
+    double E1 = E0 - dEdx1 * step / 10. / 2.;
+    double dEdx2 = energyLoss(E1, p); // dEdx(x0 + h/2, E0 + h/2 * dEdx1)
 
-  double E2 = E0 - dEdx2 * step / 10. / 2.;
-  double dEdx3 = energyLoss(E2, p); // dEdx(x0 + h/2, E0 + h/2 * dEdx2)
+    double E2 = E0 - dEdx2 * step / 10. / 2.;
+    double dEdx3 = energyLoss(E2, p); // dEdx(x0 + h/2, E0 + h/2 * dEdx2)
 
-  double E3 = E0 - dEdx3 * step / 10.;
-  double dEdx4 = energyLoss(E3, p); // dEdx(x0 + h, E0 + h * dEdx3)
+    double E3 = E0 - dEdx3 * step / 10.;
+    double dEdx4 = energyLoss(E3, p); // dEdx(x0 + h, E0 + h * dEdx3)
 
-  fDEdx = (dEdx1 + 2. * dEdx2 + 2. * dEdx3 + dEdx4) / 6.;
+    fDEdx = (dEdx1 + 2. * dEdx2 + 2. * dEdx3 + dEdx4) / 6.;
+  }
 
   double dE = step / 10. * fDEdx; // positive for positive stepSign
 
@@ -238,6 +243,7 @@ double STTrackFitter::momentumLoss(double p, double step)
 
 void STTrackFitter::checkMaterial(double z)
 {
+  // checking material using central coordinate and half-thickness of a layer
   fInMaterial = false;
   for (auto& coord : fDetectorLayers) {
     if (std::abs(coord - z) < fLayerTH) {
@@ -245,6 +251,48 @@ void STTrackFitter::checkMaterial(double z)
       break;
     }
   }
+}
+
+/*
+ * correction for energy loss
+ * todo : account for Bremsstrahlung (?)
+ */
+void STTrackFitter::correctForPLoss(std::vector<double>& trackStateKF,
+                                    std::vector<double>& nextStateKF,
+                                    TMatrixT<double>& covMatrix)
+{
+  // correction for qp
+  double tx = nextStateKF[2];
+  double ty = nextStateKF[3];
+  double t = std::sqrt(1. + tx * tx + ty * ty);
+  double dl = fDz * t;
+  double qp = trackStateKF[4];
+  double p = std::abs(fCharge / qp);
+  double momLoss = momentumLoss(p, dl, true);
+  fSumMomLoss += momLoss;
+
+  if (fDebugLevel > 2) {
+    printf("LOG(INFO): STTrackFitter::extrapolateTrackToZ: momLoss = %.6f\n", momLoss);
+  }
+
+  // correction for cov matrix
+  // from cbm code
+  double effDL = dl / 10. / fMatRadL;
+  double s0 = (std::abs(effDL) > std::exp(-1. / 0.038)) ? 1e3 * qp * 0.0136 * (1. + 0.038 * std::log(std::abs(effDL))) : 0.;
+  double a = (1. + fMass * fMass * qp * qp) * s0 * s0 * t * effDL;
+  double Q5 = a * (1. + tx * tx);
+  double Q8 = a * tx * ty;
+  double Q9 = a * (1. + ty * ty);
+  double Ecor = 1. - momLoss / p;
+  nextStateKF[4] *= Ecor;
+  covMatrix(2, 2) += Q5;
+  covMatrix(3, 2) += Q8;
+  covMatrix(3, 3) += Q9;
+  covMatrix(4, 0) *= Ecor;
+  covMatrix(4, 1) *= Ecor;
+  covMatrix(4, 2) *= Ecor;
+  covMatrix(4, 3) *= Ecor;
+  covMatrix(4, 4) *= Ecor * Ecor;
 }
 
 /**
@@ -277,9 +325,6 @@ void STTrackFitter::extrapolateTrackToZ(STTrack& s1Track, double nextZ)
   }
 
   for (uint step = 0; step <= nSteps; step++) {
-    // check if inside a material
-    checkMaterial(z);
-
     // track propagation
     integrateMagRK4(trackStateKF, nextStateKF);
 
@@ -292,41 +337,12 @@ void STTrackFitter::extrapolateTrackToZ(STTrack& s1Track, double nextZ)
     // cov matrix propagation
     propagateCovMatrix(trackStateKF, covMatrix);
 
-    // correction for energy loss
-    // todo : account for Bremsstrahlung (?)
-    if (fCalcLoss && fInMaterial) {
-      // correction for qp
-      double tx = trackStateKF[2];
-      double ty = trackStateKF[3];
-      double t = std::sqrt(1. + tx * tx + ty * ty);
-      double dl = fDz * t; // signed dLength
-      double qp = trackStateKF[4];
-      double momLoss = momentumLoss(std::abs(fCharge / qp), dl);
-      fSumMomLoss += momLoss;
-      if (fDebugLevel > 2) {
-        printf("LOG(INFO): STTrackFitter::extrapolateTrackToZ: momLoss = %.6f\n", momLoss);
+    if (fCalcLoss) {
+      // check if inside a material
+      checkMaterial(z);
+      if (fInMaterial) {
+        correctForPLoss(trackStateKF, nextStateKF, covMatrix);
       }
-      nextStateKF[4] = fCharge / (std::abs(fCharge / qp) - momLoss);
-
-      // correction for cov matrix
-      // from cbm code
-      double p0 = std::abs(fCharge / qp);
-      double p = std::abs(fCharge / nextStateKF[4]);
-      double effDL = dl / 10. / fMatRadL;
-      double s0 = (effDL > std::exp(-1. / 0.038) ) ? qp * 0.0136 * (1. + 0.038 * std::log(effDL)) : 0.;
-      double a  = (1. + fMass * fMass * qp * qp) * s0 * s0 * t * t * effDL;
-      double Q5 = a * (1. + tx * tx);
-      double Q8 = a * tx * ty;
-      double Q9 = a * (1. + ty * ty);
-      double Ecor = p / p0;
-      covMatrix(2, 2) += Q5;
-      covMatrix(3, 2) += Q8;
-      covMatrix(3, 3) += Q9;
-      covMatrix(4, 0) *= Ecor;
-      covMatrix(4, 1) *= Ecor;
-      covMatrix(4, 2) *= Ecor;
-      covMatrix(4, 3) *= Ecor;
-      covMatrix(4, 4) *= Ecor * Ecor;
     }
 
     for (uint i = 0; i < 5; i++) {
@@ -407,8 +423,7 @@ void STTrackFitter::fitTrack(STTrack& inS1Track,
                              const std::vector<std::vector<double>>& vMeas,
                              const TMatrixT<double>& covMatrixMeas,
                              std::vector<std::vector<double>>& filteredStates,
-                             STTrack& outS1Track,
-                             bool isRefit)
+                             STTrack& outS1Track)
 {
   fSumMomLoss = 0;
 
@@ -436,7 +451,7 @@ void STTrackFitter::fitTrack(STTrack& inS1Track,
   }
 
   // initializing state
-  if (!isRefit) {
+  if (!fRefit) {
     double inTx = vMeas[0][0] / vZcoords[0];
     double inTy = vMeas[0][1] / vZcoords[0];
     outS1Track.setStateFromKF(inS1Track.getZ(), std::vector<double>{inState[0], inState[1], inTx, inTy, inState[4]});

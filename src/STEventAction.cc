@@ -128,11 +128,11 @@ void STEventAction::Digitizer()
 
     // TODO store these parameters in a separate place (RunAction?)
     double elossMax = 2; // MeV
-    int adcMax = 1024;  //  10-bit adc
+    int adcMax = 1024;   //  10-bit adc
     int adc = sumEloss > elossMax ? adcMax - 1 : floor(sumEloss / elossMax * adcMax);
 
     double ftime = sumTimeEloss / sumEloss; // simple eloss weighted average. Unrealistic but...
-    int t = floor(ftime * 10);             // assuming 0.1 ns clock
+    int t = floor(ftime * 10);              // assuming 0.1 ns clock
     digi.SetAmplitude(adc);
     digi.SetTime(t);
   }
@@ -214,7 +214,7 @@ void STEventAction::HitProducer()
       layer = digi.GetLayer();
       double x = xmin + padSizeX * (digi.GetRowX() + 0.5f); // using pad centers
       double y = ymin + padSizeY * (digi.GetRowY() + 0.5f); // using pad centers
-      double z = fDistCM * 10 * (layer + 1);            // fixme: clean up
+      double z = fDistCM * 10 * (layer + 1);                // fixme: clean up
       double adc = digi.GetAmplitude();
       sumAdcX += adc * x;
       sumAdcY += adc * y;
@@ -428,7 +428,7 @@ void STEventAction::fitTracksKF()
   trackFitter->setDebugLevel(0);
 
   // double mass = 0.5109989461; // electron mass, [mev]
-  double mass = 105.6583745;   // muon mass, [mev]
+  double mass = 105.6583745;  // muon mass, [mev]
   trackFitter->setMass(mass); // [mev]; todo : set proper hypothesis
   trackFitter->setCharge(1.);
 
@@ -441,16 +441,15 @@ void STEventAction::fitTracksKF()
                                173.,    // [ev]
                                9.370);  // [cm]
 
-  // todo : set from geant4 geometry
   std::vector<double> layers(fNSiLayers);
   double layerZ = fDistCM * 10.;
+  // central coordinates
   for (auto& layer : layers) {
     layer = layerZ;
     layerZ += fDistCM * 10.;
   }
   trackFitter->setDetectorGeom(layers);
   trackFitter->setLayerTH(fLayersThic);
-
 
   for (auto track : vTracks) {
     // construct measurements out of mc points
@@ -465,8 +464,18 @@ void STEventAction::fitTracksKF()
       }
     }
 
-    // construct measurements out of mc pointsA
+    // construct measurements out of mc points
     for (auto& mcPoint : trackMcPoints) {
+      std::vector<double> meas(2, 0);
+      double measX = mcPoint.GetPosOut().getX() + gRandom->Gaus(0., 0.2);
+      meas[0] = measX;
+      double measY = mcPoint.GetPosOut().getY() + gRandom->Gaus(0., 0.2);
+      meas[1] = measY;
+      measVec.push_back(meas);
+      double measZ = mcPoint.GetPosOut().getZ();
+      coordsZ.push_back(measZ);
+    }
+    /*    for (auto& mcPoint : trackMcPoints) {
       std::vector<double> meas(2, 0);
       double measX = 0.5 * (mcPoint.GetPosIn().getX() + mcPoint.GetPosOut().getX()) + gRandom->Gaus(0., 0.2);
       meas[0] = measX;
@@ -474,9 +483,14 @@ void STEventAction::fitTracksKF()
       meas[1] = measY;
       measVec.push_back(meas);
       double measZ = 0.5 * (mcPoint.GetPosIn().getZ() + mcPoint.GetPosOut().getZ());
-      // double measZ = mcPoint.GetPosOut().getZ(); // fixme : set a correct value for z coordinates
       coordsZ.push_back(measZ);
-    }
+    }*/
+
+    // need to propagate track to the end
+    /*    auto& mcPoint = trackMcPoints.back();
+    measVec.back()[0] = mcPoint.GetPosOut().getX() + gRandom->Gaus(0., 0.2);
+    measVec.back()[1] = mcPoint.GetPosOut().getY() + gRandom->Gaus(0., 0.2);
+    coordsZ.back() += fLayersThic;*/
 
     // debug
     for (uint i = 0; i < measVec.size(); i++) {
@@ -488,12 +502,13 @@ void STEventAction::fitTracksKF()
     track.setCovMatrix(initCovMatrix);
     STTrack fittedTrack; // todo: propagate fitted tracks to vTrack vector
     std::vector<std::vector<double>> fitStates;
-    trackFitter->setZStepLength(0.01);
+    trackFitter->setZStepLength(0.05);
+    trackFitter->setRefit(false);
     trackFitter->fitTrack(track, coordsZ, measVec, measCovMatrix, fitStates, fittedTrack);
 
     // draw trajectory if needed
-    fDebug = true;
-    if (fDebug) {
+    fDrawTraj = false;
+    if (fDrawTraj) {
       drawQA(track, coordsZ, fitStates, trackFitter->fTrajectoryZXrk4, Form("kf_qa_fit_%d", iCanvasFit));
       iCanvasFit++;
     }
@@ -506,13 +521,13 @@ void STEventAction::fitTracksKF()
     printf("\nLOG(INFO): STEventAction::fitTracksKF(): track chi2: %.3f\n", fittedTrack.getChi2());
 
     // pull histograms at the last position
-    fPulls = false;
+    fPulls = true;
     if (fPulls) {
       TMatrixT<double> cov(5, 5);
       fittedTrack.getCovMatrix(cov);
       auto& mcPoint = vMcPoints.back();
-      double mcX = 0.5 * (mcPoint.GetPosIn().getX() + mcPoint.GetPosOut().getX());
-      double mcY = 0.5 * (mcPoint.GetPosIn().getY() + mcPoint.GetPosOut().getY());
+      double mcX = mcPoint.GetPosOut().getX();
+      double mcY = mcPoint.GetPosOut().getY();
       double mcTx = (mcPoint.GetPosOut().getX() - mcPoint.GetPosIn().getX()) / (mcPoint.GetPosOut().getZ() - mcPoint.GetPosIn().getZ());
       double mcTy = (mcPoint.GetPosOut().getY() - mcPoint.GetPosIn().getY()) / (mcPoint.GetPosOut().getZ() - mcPoint.GetPosIn().getZ());
       double recoX = fitStates.back()[0];
@@ -522,7 +537,7 @@ void STEventAction::fitTracksKF()
       fRunAction->hXResiduals->Fill(recoX - mcX);
       fRunAction->hYResiduals->Fill(recoY - mcY);
       fRunAction->hXPulls->Fill((recoX - mcX) / std::sqrt(cov(0, 0)));
-      fRunAction->hYPulls->Fill((recoX - mcX) / std::sqrt(cov(1, 1)));
+      fRunAction->hYPulls->Fill((recoY - mcY) / std::sqrt(cov(1, 1)));
       double mcQP = 1. / 1000.; // [1/mev] // todo: get from generator action (?)
       double recoQP = fitStates.back()[4];
       fRunAction->hPResiduals->Fill(recoQP - mcQP);
@@ -536,7 +551,7 @@ void STEventAction::fitTracksKF()
     }
 
     double sumMomLoss = trackFitter->getSumMomLoss();
-    printf("\nLOG(INFO): sum momentum loss = %.6f MeV\n", sumMomLoss);
+    printf("\nLOG(INFO): sum momentum loss = %.3f MeV\n\n", sumMomLoss);
 
     // ---------------------------------------------------------------
     // refitting track
@@ -594,6 +609,7 @@ void STEventAction::fitTracksKF()
     }
     */
   }
+
   delete gRandom;
   delete trackFitter;
 }

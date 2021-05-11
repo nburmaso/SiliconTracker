@@ -33,7 +33,11 @@ G4VPhysicalVolume* STDetectorConstruction::Construct()
   G4VPhysicalVolume* physWorld = new G4PVPlacement(0, G4ThreeVector(), logicWorld,
                                                    "World", 0, false, 0, 0);
 
-  fLayersThic = 20.;                                                        // half-thickness in [mm]
+  // half-thickness in [mm]; 4.7 -> ~10% rad. length for Si
+  fLayersThic = 2.35; // 5%
+  // fLayersThic = 4.7;   // 10%
+  // fLayersThic = 7.05;  // 15%
+  // fLayersThic = 9.4;   // 20%
   auto* solidSi = new G4Box("SiLayer", 50 * cm, 50 * cm, fLayersThic * mm); // half-dimensions
   auto* logicSi = new G4LogicalVolume(solidSi, si_mat, "SiLayer");
 
@@ -44,8 +48,8 @@ G4VPhysicalVolume* STDetectorConstruction::Construct()
                                                       absorberLogic, "absorber", logicWorld, false, 0, 0);
 */
 
-  fNSiLayers = 5;
-  fDistCM = 20; // [cm]
+  fNSiLayers = 10;
+  fDistCM = 10; // [cm]
   for (uint i = 0; i < fNSiLayers; i++) {
     new G4PVPlacement(0, G4ThreeVector(0., 0., fDistCM * (i + 1) * cm), logicSi,
                       "SiLayer", logicWorld, false, 0, 0);
