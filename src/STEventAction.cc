@@ -555,7 +555,6 @@ void STEventAction::fitTracksKF()
       measVec[iMeas][1] = measY;
       double measZ = mcPoint.GetPosIn().getZ();
       coordsZ[iMeas] = measZ;
-      // printf("%.3f %.3f %.3f\n", measX, measY, measZ);
     }
 
     // extrapolating to (0, 0, 0)
@@ -587,11 +586,10 @@ void STEventAction::fitTracksKF()
     if (fPulls) {
       TMatrixT<double> cov(5, 5);
       refittedTrack.getCovMatrix(cov);
-      auto& mcPoint = trackMcPoints.front();
-      double mcX = 0;  // mcPoint.GetPosIn().getX();
-      double mcY = 0;  // mcPoint.GetPosIn().getY();
-      double mcTx = 0; // (mcPoint.GetPosOut().getX() - mcPoint.GetPosIn().getX()) / (mcPoint.GetPosOut().getZ() - mcPoint.GetPosIn().getZ());
-      double mcTy = 0; // (mcPoint.GetPosOut().getY() - mcPoint.GetPosIn().getY()) / (mcPoint.GetPosOut().getZ() - mcPoint.GetPosIn().getZ());
+      double mcX = 0;
+      double mcY = 0;
+      double mcTx = 0;
+      double mcTy = 0;
       double recoX = refitStates.back()[0];
       double recoY = refitStates.back()[1];
       double recoTx = refitStates.back()[2];
