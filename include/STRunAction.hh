@@ -44,6 +44,7 @@ class STRunAction : public G4UserRunAction
   {
     int eventID;
     int trackID;
+    int mcLabel;
     double z;
     double x;
     double y;

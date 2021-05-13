@@ -54,6 +54,7 @@ void STRunAction::BeginOfRunAction(const G4Run* /*run*/)
   tTracks = new TTree("reco_tracks", "Reconstructed tracks");
   tTracks->Branch("eventID", &recoTrack.eventID, "eventID/I");
   tTracks->Branch("trackID", &recoTrack.trackID, "trackID/I");
+  tTracks->Branch("mcLabel", &recoTrack.mcLabel, "mcLabel/I");
   tTracks->Branch("z", &recoTrack.z, "z/D");
   tTracks->Branch("x", &recoTrack.x, "x/D");
   tTracks->Branch("y", &recoTrack.y, "y/D");

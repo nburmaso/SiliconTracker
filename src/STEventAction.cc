@@ -562,7 +562,8 @@ void STEventAction::fitTracksKF()
     // ---------------------------------------------------------------
     // write tracks into tree
     fRunAction->recoTrack.eventID = iEvent;
-    fRunAction->recoTrack.trackID = iTrack;
+    fRunAction->recoTrack.trackID = iTrack + 1;
+    fRunAction->recoTrack.mcLabel = track.getMCTrackID();
     fRunAction->recoTrack.z = coordsZ.back();
     fRunAction->recoTrack.x = fitStates.back()[0];
     fRunAction->recoTrack.y = fitStates.back()[1];
