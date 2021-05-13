@@ -268,7 +268,7 @@ void STTrackFitter::correctForPLoss(std::vector<double>& trackStateKF,
   double dl = fDz * t;
   double qp = trackStateKF[4];
   double p = std::abs(fCharge / qp);
-  double momLoss = momentumLoss(p, dl, true);
+  double momLoss = momentumLoss(p, dl, false);
   fSumMomLoss += momLoss;
 
   if (fDebugLevel > 2) {
@@ -279,7 +279,7 @@ void STTrackFitter::correctForPLoss(std::vector<double>& trackStateKF,
   // from cbm code
   double effDL = dl / 10. / fMatRadL;
   double s0 = (std::abs(effDL) > std::exp(-1. / 0.038)) ? 1e3 * qp * 0.0136 * (1. + 0.038 * std::log(std::abs(effDL))) : 0.;
-  double a = (1. + fMass * fMass * qp * qp) * s0 * s0 * t * effDL;
+  double a = (1. + fMass * fMass * qp * qp) * s0 * s0 * t * t * effDL;
   double Q5 = a * (1. + tx * tx);
   double Q8 = a * tx * ty;
   double Q9 = a * (1. + ty * ty);
@@ -540,7 +540,8 @@ void STTrackFitter::fitTrack(STTrack& inS1Track,
     // chi2 = chi2_prev + zeta^T * (V + H * C * H^T)^-1 * zeta
     TMatrixT<double> chi2tmp1 = VHCHt * residVecZ;
     TMatrixT<double> chi2 = residVecZT * chi2tmp1;
-    outS1Track.setChi2(outS1Track.getChi2() + chi2(0, 0));
+    double newChi = outS1Track.getChi2() + chi2(0, 0);
+    outS1Track.setChi2(newChi);
   }
 }
 

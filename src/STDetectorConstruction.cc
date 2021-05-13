@@ -34,7 +34,7 @@ G4VPhysicalVolume* STDetectorConstruction::Construct()
                                                    "World", 0, false, 0, 0);
 
   // half-thickness in [mm]; 4.7 -> ~10% rad. length for Si
-  fLayersThic = 2.35; // 5%
+  fLayersThic = 2;
   // fLayersThic = 4.7;   // 10%
   // fLayersThic = 7.05;  // 15%
   // fLayersThic = 9.4;   // 20%

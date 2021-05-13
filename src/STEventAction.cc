@@ -435,9 +435,6 @@ void STEventAction::fitTracksKF()
   trackFitter->setMass(mass); // [mev]; // todo : set proper hypothesis
   trackFitter->setCharge(1.);
 
-  trackFitter->setZStepLength(0.05);
-  trackFitter->setRefit(false);
-
   // todo : get material parameters from geant4 geometry
   // parameters for Si from pdg
   // https://pdg.lbl.gov/2020/AtomicNuclearProperties/HTML/silicon_Si.html
@@ -461,44 +458,28 @@ void STEventAction::fitTracksKF()
   int nTracks = vTracks.size();
   for (int iTrack = 0; iTrack < nTracks; iTrack++) {
     auto& track = vTracks[iTrack];
-    // construct measurements out of mc points
-    std::vector<std::vector<double>> measVec;
-    std::vector<double> coordsZ;
 
     // collect relevant mc points
-    for (auto& mcPoint : vMcPoints) {
+    for (auto mcPoint : vMcPoints) {
       if (mcPoint.GetTrackID() == track.getMCTrackID()) {
         trackMcPoints.push_back(mcPoint);
       }
     }
 
     // construct measurements out of mc points
-    for (auto& mcPoint : trackMcPoints) {
-      std::vector<double> meas(2, 0);
-      double measX = mcPoint.GetPosOut().getX() + gRandom->Gaus(0., 0.2);
-      meas[0] = measX;
-      double measY = mcPoint.GetPosOut().getY() + gRandom->Gaus(0., 0.2);
-      meas[1] = measY;
-      measVec.push_back(meas);
-      double measZ = mcPoint.GetPosOut().getZ();
-      coordsZ.push_back(measZ);
-    }
-    /*    for (auto& mcPoint : trackMcPoints) {
-      std::vector<double> meas(2, 0);
-      double measX = 0.5 * (mcPoint.GetPosIn().getX() + mcPoint.GetPosOut().getX()) + gRandom->Gaus(0., 0.2);
-      meas[0] = measX;
-      double measY = 0.5 * (mcPoint.GetPosIn().getY() + mcPoint.GetPosOut().getY()) + gRandom->Gaus(0., 0.2);
-      meas[1] = measY;
-      measVec.push_back(meas);
-      double measZ = 0.5 * (mcPoint.GetPosIn().getZ() + mcPoint.GetPosOut().getZ());
-      coordsZ.push_back(measZ);
-    }*/
+    std::vector<std::vector<double>> measVec(trackMcPoints.size(), std::vector<double>(2, 0));
+    std::vector<double> coordsZ(trackMcPoints.size(), 0);
 
-    // need to propagate track to the end
-    /*    auto& mcPoint = trackMcPoints.back();
-    measVec.back()[0] = mcPoint.GetPosOut().getX() + gRandom->Gaus(0., 0.2);
-    measVec.back()[1] = mcPoint.GetPosOut().getY() + gRandom->Gaus(0., 0.2);
-    coordsZ.back() += fLayersThic;*/
+    // construct measurements out of mc points
+    for (uint iPoint = 0; iPoint < trackMcPoints.size(); iPoint++) {
+      auto& mcPoint = trackMcPoints[iPoint];
+      double measX = mcPoint.GetPosOut().getX() + gRandom->Gaus(0., 0.2);
+      double measY = mcPoint.GetPosOut().getY() + gRandom->Gaus(0., 0.2);
+      measVec[iPoint][0] = measX;
+      measVec[iPoint][1] = measY;
+      double measZ = mcPoint.GetPosOut().getZ();
+      coordsZ[iPoint] = measZ;
+    }
 
     // debug
     for (uint i = 0; i < measVec.size(); i++) {
@@ -510,6 +491,8 @@ void STEventAction::fitTracksKF()
     track.setCovMatrix(initCovMatrix);
     STTrack fittedTrack; // todo: propagate fitted tracks to vTrack vector
     std::vector<std::vector<double>> fitStates;
+    trackFitter->setRefit(false);
+    trackFitter->setZStepLength(0.01);
     trackFitter->fitTrack(track, coordsZ, measVec, measCovMatrix, fitStates, fittedTrack);
 
     // draw trajectory if needed
@@ -527,7 +510,7 @@ void STEventAction::fitTracksKF()
     printf("\nLOG(INFO): STEventAction::fitTracksKF(): track chi2: %.3f\n", fittedTrack.getChi2());
 
     // pull histograms at the last position
-    fPulls = true;
+    fPulls = false;
     if (fPulls) {
       TMatrixT<double> cov(5, 5);
       fittedTrack.getCovMatrix(cov);
@@ -559,36 +542,37 @@ void STEventAction::fitTracksKF()
     double sumMomLoss = trackFitter->getSumMomLoss();
     printf("\nLOG(INFO): sum momentum loss = %.3f MeV\n\n", sumMomLoss);
 
-    // ---------------------------------------------------------------
-    // write tracks into tree
-    fRunAction->recoTrack.eventID = iEvent;
-    fRunAction->recoTrack.trackID = iTrack + 1;
-    fRunAction->recoTrack.mcLabel = track.getMCTrackID();
-    fRunAction->recoTrack.z = coordsZ.back();
-    fRunAction->recoTrack.x = fitStates.back()[0];
-    fRunAction->recoTrack.y = fitStates.back()[1];
-    fRunAction->recoTrack.tx = fitStates.back()[2];
-    fRunAction->recoTrack.ty = fitStates.back()[3];
-    fRunAction->recoTrack.qp = fitStates.back()[4];
-    fittedTrack.getCovMatrix(fRunAction->recoTrack.covM);
-    fRunAction->tTracks->Fill();
+    fitStates.clear();
 
     // ---------------------------------------------------------------
     // refitting track
-    /*
-    // fixme: find errors (?)
+    for (int iPoint = trackMcPoints.size() - 1; iPoint >= 0; iPoint--) {
+      auto& mcPoint = trackMcPoints[iPoint];
+      int iMeas = trackMcPoints.size() - 1 - iPoint;
+      double measX = mcPoint.GetPosIn().getX() + gRandom->Gaus(0., 0.2);
+      double measY = mcPoint.GetPosIn().getY() + gRandom->Gaus(0., 0.2);
+      measVec[iMeas][0] = measX;
+      measVec[iMeas][1] = measY;
+      double measZ = mcPoint.GetPosIn().getZ();
+      coordsZ[iMeas] = measZ;
+      // printf("%.3f %.3f %.3f\n", measX, measY, measZ);
+    }
+
+    // extrapolating to (0, 0, 0)
+    measVec.emplace_back(2, 0);
+    coordsZ.emplace_back(0);
+
     std::vector<std::vector<double>> refitStates;
     STTrack refittedTrack;
-    std::reverse(coordsZ.begin(), coordsZ.end());
-    std::reverse(measVec.begin(), measVec.end());
-    trackFitter->setZStepLength(-0.01);
-    trackFitter->fitTrack(fittedTrack, coordsZ, measVec, measCovMatrix, refitStates, refittedTrack, true);
 
-    // draw refitted trajectory
-    fDebugLevel = true;
-    if (fDebugLevel) {
-      drawQA(track, coordsZ, refitStates, trackFitter->fTrajectoryZXrk4, Form("kf_qa_refit_%d", iCanvasRefit));
-      iCanvasRefit++;
+    trackFitter->setZStepLength(-0.01);
+    trackFitter->setRefit(true);
+    trackFitter->fitTrack(fittedTrack, coordsZ, measVec, measCovMatrix, refitStates, refittedTrack);
+
+    fDrawTraj = false;
+    if (fDrawTraj) {
+      drawQA(track, coordsZ, refitStates, trackFitter->fTrajectoryZXrk4, Form("kf_qa_fit_%d", iCanvasFit));
+      iCanvasFit++;
     }
     trackFitter->clearTrajectory();
 
@@ -596,42 +580,59 @@ void STEventAction::fitTracksKF()
       printf("LOG(INFO): STEventAction::fitTracksKF(): refit state: z = %.5f, [x] = %.5f, [y] = %.5f, [tx] = %.5f, [ty] = %.5f, [q/p] = %.5f\n",
              coordsZ[iState], refitStates[iState][0], refitStates[iState][1], refitStates[iState][2], refitStates[iState][3], refitStates[iState][4]);
     }
-    printf("\nLOG(INFO): STEventAction::fitTracksKF(): track chi2: %.3f\n", refittedTrack.getChi2());
+    printf("\nLOG(INFO): STEventAction::fitTracksKF(): track chi2: %.3f\n", std::abs(refittedTrack.getChi2()));
 
     // pull histograms at the first position
     fPulls = false;
     if (fPulls) {
       TMatrixT<double> cov(5, 5);
       refittedTrack.getCovMatrix(cov);
-      auto& mcPoint = vMcPoints.front();
-      double mcX = 0.5 * (mcPoint.GetPosIn().getX() + mcPoint.GetPosOut().getX());
-      double mcY = 0.5 * (mcPoint.GetPosIn().getY() + mcPoint.GetPosOut().getY());
-      double mcTx = (mcPoint.GetPosOut().getX() - mcPoint.GetPosIn().getX()) / (mcPoint.GetPosOut().getZ() - mcPoint.GetPosIn().getZ());
-      double mcTy = (mcPoint.GetPosOut().getY() - mcPoint.GetPosIn().getY()) / (mcPoint.GetPosOut().getZ() - mcPoint.GetPosIn().getZ());
+      auto& mcPoint = trackMcPoints.front();
+      double mcX = 0;  // mcPoint.GetPosIn().getX();
+      double mcY = 0;  // mcPoint.GetPosIn().getY();
+      double mcTx = 0; // (mcPoint.GetPosOut().getX() - mcPoint.GetPosIn().getX()) / (mcPoint.GetPosOut().getZ() - mcPoint.GetPosIn().getZ());
+      double mcTy = 0; // (mcPoint.GetPosOut().getY() - mcPoint.GetPosIn().getY()) / (mcPoint.GetPosOut().getZ() - mcPoint.GetPosIn().getZ());
       double recoX = refitStates.back()[0];
       double recoY = refitStates.back()[1];
       double recoTx = refitStates.back()[2];
       double recoTy = refitStates.back()[3];
       fRunAction->hXResiduals->Fill(recoX - mcX);
       fRunAction->hYResiduals->Fill(recoY - mcY);
-      fRunAction->hXPulls->Fill((recoX - mcX) / std::sqrt(cov(0, 0)));
-      fRunAction->hYPulls->Fill((recoX - mcX) / std::sqrt(cov(1, 1)));
+      fRunAction->hXPulls->Fill((recoX - mcX) / std::sqrt(std::abs(cov(0, 0))));
+      fRunAction->hYPulls->Fill((recoY - mcY) / std::sqrt(std::abs(cov(1, 1))));
       double mcQP = 1. / 1000.; // [1/mev] // todo: get from generator action (?)
       double recoQP = refitStates.back()[4];
       fRunAction->hPResiduals->Fill(recoQP - mcQP);
-      fRunAction->hPPulls->Fill((recoQP - mcQP) / std::sqrt(cov(4, 4)));
-      fRunAction->hPSigmas->Fill(std::sqrt(cov(4, 4)));
+      fRunAction->hPPulls->Fill((recoQP - mcQP) / std::sqrt(std::abs(cov(4, 4))));
+      fRunAction->hPSigmas->Fill(std::sqrt(std::abs(cov(4, 4))));
       fRunAction->hChi2s->Fill(refittedTrack.getChi2());
       fRunAction->hTxResiduals->Fill(recoTx - mcTx);
       fRunAction->hTyResiduals->Fill(recoTy - mcTy);
-      fRunAction->hTxPulls->Fill((recoTx - mcTx) / std::sqrt(cov(2, 2)));
-      fRunAction->hTyPulls->Fill((recoTy - mcTy)  / std::sqrt(cov(3, 3)));
+      fRunAction->hTxPulls->Fill((recoTx - mcTx) / std::sqrt(std::abs(cov(2, 2))));
+      fRunAction->hTyPulls->Fill((recoTy - mcTy) / std::sqrt(std::abs(cov(3, 3))));
     }
-    */
+
+    // ---------------------------------------------------------------
+    // write tracks into tree
+    fRunAction->recoTrack.eventID = iEvent;
+    fRunAction->recoTrack.trackID = iTrack + 1;
+    fRunAction->recoTrack.mcLabel = track.getMCTrackID();
+    fRunAction->recoTrack.z = coordsZ.back();
+    fRunAction->recoTrack.x = refitStates.back()[0];
+    fRunAction->recoTrack.y = refitStates.back()[1];
+    fRunAction->recoTrack.tx = refitStates.back()[2];
+    fRunAction->recoTrack.ty = refitStates.back()[3];
+    fRunAction->recoTrack.qp = refitStates.back()[4];
+    refittedTrack.getCovMatrix(fRunAction->recoTrack.covM);
+    fRunAction->tTracks->Fill();
 
     trackMcPoints.clear();
-    fitStates.clear();
+    refitStates.clear();
     measVec.clear();
+    coordsZ.clear();
+
+    sumMomLoss = trackFitter->getSumMomLoss();
+    printf("\nLOG(INFO): sum momentum loss = %.3f MeV\n\n", sumMomLoss);
   }
 
   iEvent++;

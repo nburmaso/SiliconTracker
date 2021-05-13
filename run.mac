@@ -1,7 +1,7 @@
 /run/initialize
 /vis/enable 0
 # /gun/number 1
-/run/beamOn 1000
+/run/beamOn 500
 
 # /run/initialize
 # /vis/open OGL 600x600-0+0
