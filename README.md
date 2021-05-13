@@ -31,6 +31,7 @@ Current status:
 +-- mc_tracks
 |   +-- mcEventID
 |   +-- mcTrackID
+|   +-- mcLabel
 |   +-- pdgID
 |   +-- motherID
 |   +-- vx
