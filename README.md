@@ -11,7 +11,8 @@ Current status:
   * The track model is following: {x, y, tx, ty, q/p}
   * Track parameters are propagated in magnetic field with RK4
   * At the moment, energy losses are calculated with Bethe-Bloch formula only
-  * Track parameters and covariance matrix are corrected according to energy losses [WIP]
+  * [WIP] Track parameters and covariance matrix are corrected according to energy losses
+  * [WIP] Implementation for track refitting back to interaction point at `(0, 0, 0)`
 * KF parameters of fitted tracks are stored into the `tracks.root`:
 
 ```
@@ -51,3 +52,8 @@ Current status:
 
 * ROOT
 * Geant4
+
+#### Issues:
+
+* Strange behaviour of the track covariance matrix in the refitting stage. Diagonal elements should be taken
+  as `std::abs(some_diag_element)`.
