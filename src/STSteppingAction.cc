@@ -30,13 +30,6 @@ void STSteppingAction::UserSteppingAction(const G4Step* step)
     gRunManager->GetCurrentEvent()->GetEventID();
     const auto* detectorConstruction = (const STDetectorConstruction*)gRunManager->GetUserDetectorConstruction();
     fScoringVolume = detectorConstruction->GetScoringVolume();
-    fEventAction->setNSiLayers(detectorConstruction->getNSiLayers());
-    fEventAction->setLayersDist(detectorConstruction->getLayersDistance());
-    fEventAction->setLayersThic(detectorConstruction->getLayersThic());
-    auto* magField = new double(3);
-    detectorConstruction->getMagField(magField);
-    fEventAction->setHomoMagField(magField);
-    delete magField;
   }
 
   G4LogicalVolume* volume = step->GetPreStepPoint()->GetTouchableHandle()->GetVolume()->GetLogicalVolume();

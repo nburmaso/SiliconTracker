@@ -4,6 +4,8 @@ project(SiliconTracker)
 # debug
 # set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ggdb3")
 
+set(CMAKE_CXX_STANDARD 11)
+
 find_package(Geant4 REQUIRED ui_all vis_all)
 find_package(ROOT REQUIRED)
 include(${ROOT_USE_FILE})

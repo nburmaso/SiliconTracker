@@ -29,10 +29,6 @@ class STEventAction : public G4UserEventAction
 
   void AddMcPoint(const STMcPoint& point) { vMcPoints.push_back(point); }
 
-  void setNSiLayers(uint nLayers) { fNSiLayers = nLayers; }
-  void setLayersDist(double distCM) { fDistCM = distCM; }
-  void setLayersThic(double thick) { fLayersThic = thick; }
-  void setHomoMagField(double* magField) { std::copy(magField, magField + 3, fMagField); }
   void drawQA(STTrack& preFitTrack,
               std::vector<double>& coordsZ,
               std::vector<std::vector<double>>& recoStates,
@@ -68,12 +64,6 @@ class STEventAction : public G4UserEventAction
   double fLayerCenterY;
   TH2D* fHistDigis4;
   TH1D* fHistoP;
-
-  // fixme: clean up?
-  uint fNSiLayers;
-  double fDistCM;
-  double fLayersThic;
-  double fMagField[3];
 
   bool fDebug{false};
   bool fPulls{false};

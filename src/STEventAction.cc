@@ -3,6 +3,7 @@
 #include "STTrackFitter.hh"
 #include "G4RunManager.hh"
 #include "G4Event.hh"
+#include "STSimulationPars.hh"
 
 #include "TGraphErrors.h"
 #include "TF1.h"
@@ -16,6 +17,8 @@
 
 #include <vector>
 #include <map>
+
+using namespace sim_pars;
 
 STEventAction::STEventAction(STRunAction* runAction)
   : G4UserEventAction(),
@@ -65,7 +68,7 @@ void STEventAction::EndOfEventAction(const G4Event* /* iEvent */)
 void STEventAction::Digitizer()
 {
   if (fDebug) {
-    printf("LOG(INFO): STEventAction::Digitizer(): n layers = %d\n", fNSiLayers);
+    printf("LOG(INFO): STEventAction::Digitizer(): n layers = %d\n", eNSiLayers);
   }
 
   TList* list = fRunAction->GetList();
@@ -83,7 +86,7 @@ void STEventAction::Digitizer()
   }
 
   /*
-  std::vector<bool> isVolumeFired(fNSiLayers * 2, false);
+  std::vector<bool> isVolumeFired(eNSiLayers * 2, false);
   for (uint i = 0; i < vMcPoints.size(); i++) {
     STMcPoint& point = vMcPoints[i];
     int volumeIndex = point.GetVolumeIndex();
@@ -101,7 +104,7 @@ void STEventAction::Digitizer()
     G4ThreeVector posIn = point.GetPosIn();
     G4ThreeVector posOut = point.GetPosOut();
     G4ThreeVector center = (posIn + posOut) / 2.;
-    int iLayer = round(center.z() / (fDistCM * 10)) - 1; // [cm] to [mm]
+    int iLayer = round(center.z() / (eLayersDist * 10)) - 1; // [cm] to [mm]
     printf("LOG(INFO): STEventAction::Digitizer(): iLayer = %d\n", iLayer);
     int iRowX = floor((center.x() - xmin) / padSizeX);
     int iRowY = floor((center.y() - ymin) / padSizeY);
@@ -147,7 +150,7 @@ void STEventAction::Digitizer()
     printf(" time=%2d", digi.GetTime());
     printf(" adc=%4d", digi.GetAmplitude());
     printf(" contributors=%d\n", digiMatch.GetNIndices());
-    if (digi.GetLayer() != fNSiLayers - 1) {
+    if (digi.GetLayer() != eNSiLayers - 1) {
       continue;
     }
     fHistDigis4->SetBinContent(digi.GetRowX() + 1, digi.GetRowY() + 1, digi.GetAmplitude());
@@ -216,7 +219,7 @@ void STEventAction::HitProducer()
       layer = digi.GetLayer();
       double x = xmin + padSizeX * (digi.GetRowX() + 0.5f); // using pad centers
       double y = ymin + padSizeY * (digi.GetRowY() + 0.5f); // using pad centers
-      double z = fDistCM * 10 * (layer + 1);                // fixme: clean up
+      double z = eLayersDist * 10 * (layer + 1);
       double adc = digi.GetAmplitude();
       sumAdcX += adc * x;
       sumAdcY += adc * y;
@@ -280,7 +283,7 @@ void STEventAction::TrackFinderIdeal()
     }
 
     // count number of layers with hits
-    std::vector<int> hitIndex(fNSiLayers, -1);
+    std::vector<int> hitIndex(eNSiLayers, -1);
     for (auto& itTrackHits : mapTrackHits) {
       int iHit = itTrackHits.first;
       STHit& hit = vHits[iHit];
@@ -426,7 +429,7 @@ void STEventAction::fitTracksKF()
   }
 
   auto* trackFitter = new STTrackFitter();
-  trackFitter->setMagFieldHomogeneous(fMagField[0], fMagField[1], fMagField[2]);
+  trackFitter->setMagFieldHomogeneous(eHomoMagField[0], eHomoMagField[1], eHomoMagField[2]);
   trackFitter->setCalcLoss(true);
   trackFitter->setDebugLevel(0);
 
@@ -444,15 +447,15 @@ void STEventAction::fitTracksKF()
                                173.,    // [ev]
                                9.370);  // [cm]
 
-  std::vector<double> layers(fNSiLayers);
-  double layerZ = fDistCM * 10.;
+  std::vector<double> layers(eNSiLayers);
+  double layerZ = eLayersDist * 10.;
   // central coordinates
   for (auto& layer : layers) {
     layer = layerZ;
-    layerZ += fDistCM * 10.;
+    layerZ += eLayersDist * 10.;
   }
   trackFitter->setDetectorGeom(layers);
-  trackFitter->setLayerTH(fLayersThic);
+  trackFitter->setLayerTH(eLayersThic);
 
   std::vector<STMcPoint> trackMcPoints;
   int nTracks = vTracks.size();
@@ -487,12 +490,12 @@ void STEventAction::fitTracksKF()
              coordsZ[i], measVec[i][0], measVec[i][1]);
     }
 
-    track.setStateFromKF(coordsZ.front(), std::vector<double>{measVec.front()[0], measVec.front()[1], 0, 0, 1e-6});
+    track.setStateFromKF(0, std::vector<double>{0, 0, 0, 0, 1e-6});
     track.setCovMatrix(initCovMatrix);
     STTrack fittedTrack; // todo: propagate fitted tracks to vTrack vector
     std::vector<std::vector<double>> fitStates;
     trackFitter->setRefit(false);
-    trackFitter->setZStepLength(0.01);
+    trackFitter->setZStepLength(0.1);
     trackFitter->fitTrack(track, coordsZ, measVec, measCovMatrix, fitStates, fittedTrack);
 
     // draw trajectory if needed
@@ -527,7 +530,7 @@ void STEventAction::fitTracksKF()
       fRunAction->hYResiduals->Fill(recoY - mcY);
       fRunAction->hXPulls->Fill((recoX - mcX) / std::sqrt(cov(0, 0)));
       fRunAction->hYPulls->Fill((recoY - mcY) / std::sqrt(cov(1, 1)));
-      double mcQP = 1. / 1000.; // [1/mev] // todo: get from generator action (?)
+      double mcQP = 1. / eParticleMom; // [1/mev]
       double recoQP = fitStates.back()[4];
       fRunAction->hPResiduals->Fill(recoQP - mcQP);
       fRunAction->hPPulls->Fill((recoQP - mcQP) / std::sqrt(cov(4, 4)));
@@ -546,6 +549,7 @@ void STEventAction::fitTracksKF()
 
     // ---------------------------------------------------------------
     // refitting track
+    trackFitter->extrapolateTrackToZ(fittedTrack, coordsZ.back() + 100.);
     for (int iPoint = trackMcPoints.size() - 1; iPoint >= 0; iPoint--) {
       auto& mcPoint = trackMcPoints[iPoint];
       int iMeas = trackMcPoints.size() - 1 - iPoint;
@@ -564,7 +568,8 @@ void STEventAction::fitTracksKF()
     std::vector<std::vector<double>> refitStates;
     STTrack refittedTrack;
 
-    trackFitter->setZStepLength(-0.01);
+    fittedTrack.setCovMatrix(initCovMatrix);
+    trackFitter->setZStepLength(-0.1);
     trackFitter->setRefit(true);
     trackFitter->fitTrack(fittedTrack, coordsZ, measVec, measCovMatrix, refitStates, refittedTrack);
 
@@ -582,7 +587,7 @@ void STEventAction::fitTracksKF()
     printf("\nLOG(INFO): STEventAction::fitTracksKF(): track chi2: %.3f\n", std::abs(refittedTrack.getChi2()));
 
     // pull histograms at the first position
-    fPulls = false;
+    fPulls = true;
     if (fPulls) {
       TMatrixT<double> cov(5, 5);
       refittedTrack.getCovMatrix(cov);
@@ -596,18 +601,18 @@ void STEventAction::fitTracksKF()
       double recoTy = refitStates.back()[3];
       fRunAction->hXResiduals->Fill(recoX - mcX);
       fRunAction->hYResiduals->Fill(recoY - mcY);
-      fRunAction->hXPulls->Fill((recoX - mcX) / std::sqrt(std::abs(cov(0, 0))));
-      fRunAction->hYPulls->Fill((recoY - mcY) / std::sqrt(std::abs(cov(1, 1))));
-      double mcQP = 1. / 1000.; // [1/mev] // todo: get from generator action (?)
+      fRunAction->hXPulls->Fill((recoX - mcX) / std::sqrt(cov(0, 0)));
+      fRunAction->hYPulls->Fill((recoY - mcY) / std::sqrt(cov(1, 1)));
+      double mcQP = 1. / eParticleMom; // [1/mev]
       double recoQP = refitStates.back()[4];
       fRunAction->hPResiduals->Fill(recoQP - mcQP);
-      fRunAction->hPPulls->Fill((recoQP - mcQP) / std::sqrt(std::abs(cov(4, 4))));
-      fRunAction->hPSigmas->Fill(std::sqrt(std::abs(cov(4, 4))));
+      fRunAction->hPPulls->Fill((recoQP - mcQP) / std::sqrt(cov(4, 4)));
+      fRunAction->hPSigmas->Fill(std::sqrt(cov(4, 4)));
       fRunAction->hChi2s->Fill(refittedTrack.getChi2());
       fRunAction->hTxResiduals->Fill(recoTx - mcTx);
       fRunAction->hTyResiduals->Fill(recoTy - mcTy);
-      fRunAction->hTxPulls->Fill((recoTx - mcTx) / std::sqrt(std::abs(cov(2, 2))));
-      fRunAction->hTyPulls->Fill((recoTy - mcTy) / std::sqrt(std::abs(cov(3, 3))));
+      fRunAction->hTxPulls->Fill((recoTx - mcTx) / std::sqrt(cov(2, 2)));
+      fRunAction->hTyPulls->Fill((recoTy - mcTy) / std::sqrt(cov(3, 3)));
     }
 
     // ---------------------------------------------------------------
