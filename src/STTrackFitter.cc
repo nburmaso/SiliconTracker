@@ -277,7 +277,7 @@ void STTrackFitter::correctForPLoss(std::vector<double>& trackStateKF,
 
   // correction for cov matrix
   // from cbm code
-  double effDL = dl / 10. / fMatRadL;
+  double effDL = std::abs(dl) / 10. / fMatRadL;
   double s0 = (std::abs(effDL) > std::exp(-1. / 0.038)) ? 1e3 * qp * 0.0136 * (1. + 0.038 * std::log(std::abs(effDL))) : 0.;
   double a = (1. + fMass * fMass * qp * qp) * s0 * s0 * t * t * effDL;
   double Q5 = a * (1. + tx * tx);

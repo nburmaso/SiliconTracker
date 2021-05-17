@@ -495,7 +495,7 @@ void STEventAction::fitTracksKF()
     STTrack fittedTrack; // todo: propagate fitted tracks to vTrack vector
     std::vector<std::vector<double>> fitStates;
     trackFitter->setRefit(false);
-    trackFitter->setZStepLength(0.1);
+    trackFitter->setZStepLength(0.05);
     trackFitter->fitTrack(track, coordsZ, measVec, measCovMatrix, fitStates, fittedTrack);
 
     // draw trajectory if needed
@@ -549,7 +549,7 @@ void STEventAction::fitTracksKF()
 
     // ---------------------------------------------------------------
     // refitting track
-    trackFitter->extrapolateTrackToZ(fittedTrack, coordsZ.back() + 100.);
+    trackFitter->extrapolateTrackToZ(fittedTrack, coordsZ.back() + 50.);
     for (int iPoint = trackMcPoints.size() - 1; iPoint >= 0; iPoint--) {
       auto& mcPoint = trackMcPoints[iPoint];
       int iMeas = trackMcPoints.size() - 1 - iPoint;
@@ -569,7 +569,7 @@ void STEventAction::fitTracksKF()
     STTrack refittedTrack;
 
     fittedTrack.setCovMatrix(initCovMatrix);
-    trackFitter->setZStepLength(-0.1);
+    trackFitter->setZStepLength(-0.05);
     trackFitter->setRefit(true);
     trackFitter->fitTrack(fittedTrack, coordsZ, measVec, measCovMatrix, refitStates, refittedTrack);
 
