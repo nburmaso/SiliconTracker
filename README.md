@@ -47,6 +47,8 @@ Current status:
 
 * `draw_pulls.cc` -- can be used to draw pulls and residuals for the fitted parameters. For now one needs to manually
   enable collection of these distributions by setting `fPulls = true` in the `STEventAction::fitTracksKF()`.
+* `draw_pulls_trees.cc` -- this simple macro can be used to draw the same pull distributions using output
+  files (`mc_tracks.root` and `tracks.root`).
 
 #### Requirements:
 
