@@ -409,7 +409,7 @@ void STEventAction::TrackFitter()
 
 int iCanvasFit = 0;
 int iCanvasRefit = 0;
-int iEvent = 0;
+int iEvent = 1;
 void STEventAction::fitTracksKF()
 {
   gRandom = new TRandomMT64();

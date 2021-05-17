@@ -55,7 +55,12 @@ void STSteppingAction::UserSteppingAction(const G4Step* step)
       if (!fEventAction->isTrackStored(track->GetTrackID())) {
         auto* gRunManager = G4RunManager::GetRunManager();
         int eventID = gRunManager->GetCurrentEvent()->GetEventID();
+        double kine = track->GetVertexKineticEnergy();
         G4ParticleDefinition* part = track->GetDefinition();
+        double mass = part->GetPDGMass();
+        double energy = kine + mass;
+        printf("Mass = %f\n", part->GetPDGMass());
+        double p = std::sqrt(energy * energy - mass * mass);
         int pdg = part->GetPDGEncoding();
         fEventAction->getRunAction()->mcTrack.mcEventID = eventID;
         fEventAction->getRunAction()->mcTrack.mcTrackID = track->GetTrackID();
@@ -64,9 +69,9 @@ void STSteppingAction::UserSteppingAction(const G4Step* step)
         fEventAction->getRunAction()->mcTrack.vx = track->GetVertexPosition().getX();
         fEventAction->getRunAction()->mcTrack.vy = track->GetVertexPosition().getY();
         fEventAction->getRunAction()->mcTrack.vz = track->GetVertexPosition().getZ();
-        fEventAction->getRunAction()->mcTrack.px = track->GetMomentum().getX();
-        fEventAction->getRunAction()->mcTrack.py = track->GetMomentum().getY();
-        fEventAction->getRunAction()->mcTrack.pz = track->GetMomentum().getZ();
+        fEventAction->getRunAction()->mcTrack.px = track->GetVertexMomentumDirection().getX() * p;
+        fEventAction->getRunAction()->mcTrack.py = track->GetVertexMomentumDirection().getY() * p;
+        fEventAction->getRunAction()->mcTrack.pz = track->GetVertexMomentumDirection().getZ() * p;
         fEventAction->getRunAction()->tMCTracks->Fill();
         fEventAction->addTrackID(track->GetTrackID());
       }
@@ -78,16 +83,6 @@ void STSteppingAction::UserSteppingAction(const G4Step* step)
       fTrackID = track->GetTrackID();
       fPosOut = pointOut->GetPosition();
       fEventAction->AddMcPoint(STMcPoint(fTrackID, -1, fELoss, fTime, fPosIn, fPosOut));
-    }
-
-    bool isXVicinity = std::abs(600. - std::abs(pointOut->GetPosition().getX())) < 1e-3;
-    bool isYVicinity = std::abs(600. - std::abs(pointOut->GetPosition().getY())) < 1e-3;
-    bool isZVicinity = std::abs(1002.35 - std::abs(pointOut->GetPosition().getZ())) < 1e-3;
-    if (isXVicinity || isYVicinity || isZVicinity) {
-      printf("LOG(INFO) STSteppingAction::UserSteppingAction: p_out = %.3f MeV\n",
-             std::sqrt(track->GetMomentum().getX() * track->GetMomentum().getX() +
-                       track->GetMomentum().getY() * track->GetMomentum().getY() +
-                       track->GetMomentum().getZ() * track->GetMomentum().getZ()));
     }
   }
 }
