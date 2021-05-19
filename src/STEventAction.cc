@@ -495,7 +495,7 @@ void STEventAction::fitTracksKF()
     STTrack fittedTrack; // todo: propagate fitted tracks to vTrack vector
     std::vector<std::vector<double>> fitStates;
     trackFitter->setRefit(false);
-    trackFitter->setZStepLength(0.05);
+    trackFitter->setZStepLength(0.01);
     trackFitter->fitTrack(track, coordsZ, measVec, measCovMatrix, fitStates, fittedTrack);
 
     // draw trajectory if needed
@@ -569,7 +569,7 @@ void STEventAction::fitTracksKF()
     STTrack refittedTrack;
 
     fittedTrack.setCovMatrix(initCovMatrix);
-    trackFitter->setZStepLength(-0.05);
+    trackFitter->setZStepLength(-0.01);
     trackFitter->setRefit(true);
     trackFitter->fitTrack(fittedTrack, coordsZ, measVec, measCovMatrix, refitStates, refittedTrack);
 
@@ -587,7 +587,7 @@ void STEventAction::fitTracksKF()
     printf("\nLOG(INFO): STEventAction::fitTracksKF(): track chi2: %.3f\n", std::abs(refittedTrack.getChi2()));
 
     // pull histograms at the first position
-    fPulls = true;
+    fPulls = false;
     if (fPulls) {
       TMatrixT<double> cov(5, 5);
       refittedTrack.getCovMatrix(cov);

@@ -90,7 +90,7 @@ int draw_pulls_trees()
     tTracks->GetEntry(iTrack);
     for (int iParticle = 0; iParticle < tParticles->GetEntries(); iParticle++) {
       tParticles->GetEntry(iParticle);
-      if (mcLabel == mcTrackID && motherID == 0) {
+      if (eventID == mcEventID && mcLabel == mcTrackID && motherID == 0) {
         auto particle = pdg->GetParticle(pdgID);
         double charge = particle->Charge() / 3.; // root???
         double mcp = std::sqrt(mcpx * mcpx + mcpy * mcpy + mcpz * mcpz);
